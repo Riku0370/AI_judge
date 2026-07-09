@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+
+# 学習結果
+*.pth
+*.pt
+*.onnx
+
+# データセット
+archive/
+dataset/
+datasets/
+data/
+
+# 出力
+outputs/
+runs/
+wandb/
+
+# Jupyter
+.ipynb_checkpoints/
