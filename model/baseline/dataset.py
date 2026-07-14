@@ -4,8 +4,26 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "archive" / "rvf10k"
+# AI_judge/
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+ARCHIVE_DIR = BASE_DIR / "archive"
+
+# AI_judge/archive/rvf10k/
+DATA_DIR = ARCHIVE_DIR / "rvf10k"
+
+TRAIN_DIR = DATA_DIR / "train"
+VALID_DIR = DATA_DIR / "valid"
+
+TRAIN_CSV = ARCHIVE_DIR / "train.csv"
+VALID_CSV = ARCHIVE_DIR / "valid.csv"
+
+IMAGE_DIRS = [
+    TRAIN_DIR / "real",
+    TRAIN_DIR / "fake",
+    VALID_DIR / "real",
+    VALID_DIR / "fake",
+]
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 32
