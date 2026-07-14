@@ -4,10 +4,10 @@ import csv
 import torch
 import torch.nn as nn
 from torchvision import models
-from baseline.tensor import create_dataloaders
+from model.baseline.tensor import create_dataloaders
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = BASE_DIR / "baseline" / "output"
+OUTPUT_DIR = BASE_DIR / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 MODEL_PATH = OUTPUT_DIR / "resnet50_real_fake.pth"

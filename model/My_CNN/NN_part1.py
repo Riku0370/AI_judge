@@ -1,4 +1,4 @@
-from tensor import FaceDataset
+from model.My_CNN.tensor import FaceDataset
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
