@@ -4,14 +4,14 @@ import csv
 import torch
 import torch.nn as nn
 from torchvision import models
-
-from tensor import create_dataloaders
-
+from baseline.tensor import create_dataloaders
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = BASE_DIR / "baseline" / "output"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-MODEL_PATH = BASE_DIR / "resnet18_real_fake.pth"
-LOG_PATH = BASE_DIR / "loss.csv"
+MODEL_PATH = OUTPUT_DIR / "resnet50_real_fake.pth"
+LOG_PATH = OUTPUT_DIR / "loss.csv"
 
 EPOCHS = 20
 LEARNING_RATE = 0.001
@@ -25,8 +25,8 @@ def get_device():
 
 
 def create_model():
-    model = models.resnet18(
-        weights=models.ResNet18_Weights.IMAGENET1K_V1
+    model = models.resnet50(
+        weights=models.ResNet50_Weights.DEFAULT
     )
 
     # 既存部分は凍結
@@ -36,6 +36,10 @@ def create_model():
     # 最後の全結合層だけ2クラス用に変更
     model.fc = nn.Linear(model.fc.in_features, 2)
 
+    #layer4の最後のブロックだけ学習可能にする
+    for param in model.layer4[-1].parameters():
+        param.requires_grad = True
+        
     return model
 
 
