@@ -1,32 +1,35 @@
-from model.My_CNN.tensor import FaceDataset
+from dataset import create_dataloaders
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import time
 import pandas as pd
+from pathlib import Path
 
 
-real_path = "archive/Real faces"
-fake_path = "archive/Fake faces"
-train_dataset = FaceDataset("archive/train.csv")
-val_dataset = FaceDataset("archive/val.csv")
+# AI_judge/
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ARCHIVE_DIR = BASE_DIR / "archive"
+
+# AI_judge/archive/rvf10k/
+DATA_DIR = ARCHIVE_DIR / "rvf10k"
+
+TRAIN_DIR = DATA_DIR / "train"
+VALID_DIR = DATA_DIR / "valid"
+
+TRAIN_CSV = ARCHIVE_DIR / "train.csv"
+VALID_CSV = ARCHIVE_DIR / "valid.csv"
+
+IMAGE_DIRS = [
+    TRAIN_DIR / "real",
+    TRAIN_DIR / "fake",
+    VALID_DIR / "real",
+    VALID_DIR / "fake",
+]
+train_loader,val_loader,class_to_idx = create_dataloaders()
+
 torch.set_num_threads(4)
-
-
-train_loader = DataLoader(
-    train_dataset,
-    batch_size=32,
-    shuffle=True,
-    num_workers=0
-)
-
-val_loader = DataLoader(
-    val_dataset,
-    batch_size=32,
-    shuffle=False,
-    num_workers=0
-)
 
 """
 ここは確認範囲
