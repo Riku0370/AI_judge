@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Judge</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="AI Judge">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">AI Image Judge</p>
+            <h1>AI生成画像 判定ツール</h1>
+          </div>
+          <div class="model-status" aria-label="モデル状態">
+            <span class="status-dot"></span>
+            <span>UI preview</span>
+          </div>
+        </header>
+
+        <div class="panels">
+          <section class="upload-panel" aria-label="画像アップロード">
+            <label class="drop-zone" for="imageInput" id="dropZone">
+              <input
+                id="imageInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+              />
+              <span class="drop-icon" aria-hidden="true"></span>
+              <span class="drop-title">画像を選択</span>
+              <span class="drop-note">PNG / JPG / WEBP</span>
+            </label>
+
+            <div class="preview-area" id="previewArea">
+              <div class="empty-preview" id="emptyPreview">
+                <span class="empty-frame" aria-hidden="true"></span>
+                <p>プレビュー待機中</p>
+              </div>
+              <img id="previewImage" alt="アップロード画像のプレビュー" hidden />
+            </div>
+          </section>
+
+          <section class="result-panel" aria-label="判定結果">
+            <div class="result-header">
+              <p class="eyebrow">Result</p>
+              <h2 id="resultLabel">未判定</h2>
+            </div>
+
+            <div class="confidence">
+              <div class="confidence-top">
+                <span>信頼度</span>
+                <strong id="confidenceValue">--%</strong>
+              </div>
+              <div class="meter" aria-hidden="true">
+                <span id="confidenceBar"></span>
+              </div>
+            </div>
+
+            <div class="score-grid" aria-label="推定スコア">
+              <div>
+                <span>AI生成</span>
+                <strong id="fakeScore">--%</strong>
+              </div>
+              <div>
+                <span>実写</span>
+                <strong id="realScore">--%</strong>
+              </div>
+            </div>
+
+            <button class="judge-button" id="judgeButton" type="button" disabled>
+              判定する
+            </button>
+
+            <p class="result-note" id="resultNote">
+              画像を選ぶと判定できます。
+            </p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

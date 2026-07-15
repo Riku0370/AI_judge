@@ -27,6 +27,9 @@ IMAGE_DIRS = [
     VALID_DIR / "real",
     VALID_DIR / "fake",
 ]
+OUTPUT_DIR = BASE_DIR / "output" / "my_cnn"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 train_loader,val_loader,class_to_idx = create_dataloaders()
 
 torch.set_num_threads(4)
@@ -132,7 +135,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=3)
         print(f"Epoch {epoch+1}: val_loss = {val_loss:.4f}")
 
         
-        torch.save(model.state_dict(), f"model_epoch_{epoch}.pth")
+        torch.save(model.state_dict(), OUTPUT_DIR / f"model_epoch_{epoch}.pth")
         end = time.time()
         print("time:", end - start)
 
@@ -142,7 +145,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=3)
     "val_loss": val_losses
     })
 
-    df.to_csv("loss.csv", index=False)
+    df.to_csv(OUTPUT_DIR / "loss.csv", index=False)
     return 
 
 train_model(
