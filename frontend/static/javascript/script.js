@@ -44,7 +44,9 @@ judgeButton.addEventListener("click", async () => {
   try {
     const data = await sendImageToAPI(file);
     console.log(data);
-    result.textContent = `判定結果: ${data.class_name} / 信頼度: ${data.confidence}`;
+    const confidencePercent = (data.confidence * 100).toFixed(2);
+    const label = data.class_name === "real" ? "実写画像" : "AI生成画像";
+    result.textContent = `判定結果: ${label} / 信頼度: ${confidencePercent}%`;
   } catch (error) {
     result.textContent = "判定に失敗しました";
   }
