@@ -26,4 +26,3 @@ wandb/
 .ipynb_checkpoints/
 
 output/
-experiments/
