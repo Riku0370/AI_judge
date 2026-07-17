@@ -24,3 +24,6 @@ wandb/
 
 # Jupyter
 .ipynb_checkpoints/
+
+output/
+experiments/
