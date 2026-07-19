@@ -3,6 +3,7 @@ const imageInput = document.getElementById("imageInput");
 const previewImage = document.getElementById("previewImage");
 const judgeButton = document.getElementById("judgeButton");
 const result = document.getElementById("result");
+const heatmapImage = document.getElementById("heatmapImage");
 
 
 // 2. 画像が選ばれた時の処理
@@ -16,6 +17,8 @@ imageInput.addEventListener("change", () => {
 
   const imageUrl = URL.createObjectURL(file);
   previewImage.src = imageUrl;
+  heatmapImage.style.display = "none";
+  heatmapImage.removeAttribute("src");
 
   result.textContent = "画像を読み込みました";
 });
@@ -47,6 +50,11 @@ judgeButton.addEventListener("click", async () => {
     const confidencePercent = (data.confidence * 100).toFixed(2);
     const label = data.class_name === "real" ? "実写画像" : "AI生成画像";
     result.textContent = `判定結果: ${label} / 信頼度: ${confidencePercent}%`;
+
+    if (data.heatmap_data_url) {
+      heatmapImage.src = data.heatmap_data_url;
+      heatmapImage.style.display = "block";
+    }
   } catch (error) {
     result.textContent = "判定に失敗しました";
   }

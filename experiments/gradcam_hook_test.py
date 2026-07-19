@@ -9,7 +9,7 @@ from torchvision import models, transforms
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "output" / "resnet50_real_fake.pth"
-SAMPLE_IMAGE_PATH = BASE_DIR / "archive" / "rvf10k" / "train" / "real" / "69945.jpg"
+SAMPLE_IMAGE_PATH = BASE_DIR / "archive" / "rvf10k" / "train" / "real"/"00076.jpg"
 
 def get_device():
     if torch.backends.mps.is_available():

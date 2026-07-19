@@ -1,8 +1,11 @@
 from pathlib import Path
+import base64
+import io
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+import numpy as np
 from PIL import Image
 import torch
 import torch.nn as nn
@@ -65,6 +68,88 @@ image_transform = transforms.Compose([
 ])
 
 
+def make_heatmap_overlay(original_image, cam):
+    # 0から1のGrad-CAMを画像サイズまで拡大し、元画像の上に赤色で重ねる。
+    cam_np = cam.detach().cpu().numpy()
+    cam_image = Image.fromarray(np.uint8(cam_np * 255))
+    cam_image = cam_image.resize(original_image.size, resample=Image.BILINEAR)
+
+    heat = np.array(cam_image) / 255.0
+    overlay_array = np.zeros((original_image.height, original_image.width, 4), dtype=np.uint8)
+    overlay_array[..., 0] = 255
+    overlay_array[..., 1] = np.uint8(180 * heat)
+    overlay_array[..., 3] = np.uint8(130 * heat)
+
+    base = original_image.convert("RGBA")
+    overlay = Image.fromarray(overlay_array, mode="RGBA")
+    return Image.alpha_composite(base, overlay).convert("RGB")
+
+
+def image_to_data_url(image):
+    # 画像をファイル保存せず、ブラウザで表示できる文字列に変換する。
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    encoded_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{encoded_image}"
+
+
+def predict_with_gradcam(pil_image):
+    # hookが保存する場所。forwardで特徴マップ、backwardで勾配がここに入る。
+    saved_values = {
+        "features": None,
+        "gradients": None,
+    }
+
+    def save_features(module, inputs, output):
+        saved_values["features"] = output
+
+    def save_gradients(module, grad_input, grad_output):
+        saved_values["gradients"] = grad_output[0]
+
+    # ResNet50の最後に近い畳み込み層を見る。
+    # ここは「画像のどのあたりを見て判定したか」を取り出しやすい層。
+    target_layer = model.layer4[-1]
+    forward_handle = target_layer.register_forward_hook(save_features)
+    backward_handle = target_layer.register_full_backward_hook(save_gradients)
+
+    try:
+        image_tensor = image_transform(pil_image).unsqueeze(0).to(device)
+
+        # Grad-CAMではbackwardが必要なので、torch.no_grad()は使わない。
+        outputs = model(image_tensor)
+        probabilities = torch.softmax(outputs, dim=1)[0]
+        confidence, predicted_index = probabilities.max(dim=0)
+        class_name = idx_to_class[predicted_index.item()]
+
+        model.zero_grad()
+        target_score = outputs[0, predicted_index]
+        target_score.backward()
+
+        features = saved_values["features"]
+        gradients = saved_values["gradients"]
+
+        # 勾配の平均を「各特徴マップの重要度」として使い、特徴マップに掛ける。
+        weights = gradients.mean(dim=(2, 3), keepdim=True)
+        cam = (weights * features).sum(dim=1)
+        cam = torch.relu(cam).squeeze()
+        cam = cam - cam.min()
+        cam = cam / (cam.max() + 1e-8)
+
+        heatmap_image = make_heatmap_overlay(pil_image, cam)
+        heatmap_data_url = image_to_data_url(heatmap_image)
+
+        return {
+            "class_name": class_name,
+            "confidence": confidence.item(),
+            "fake": probabilities[class_to_idx["fake"]].item(),
+            "real": probabilities[class_to_idx["real"]].item(),
+            "heatmap_data_url": heatmap_data_url,
+        }
+    finally:
+        forward_handle.remove()
+        backward_handle.remove()
+
+
 @app.get("/")
 def index():
     # ブラウザで http://127.0.0.1:8000/ を開いたときにHTMLを返す。
@@ -76,27 +161,13 @@ async def create_prediction(image: UploadFile = File(...)):
     # JavaScriptの formData.append("image", file) の "image" がここに入る。
     # UploadFileの中身をPillowで開き、RGB画像として扱う。
     pil_image = Image.open(image.file).convert("RGB")
-
-    # モデルに入れられる形へ変換し、batch次元を1つ追加する。
-    # shapeは [3, 224, 224] から [1, 3, 224, 224] になる。
-    image_tensor = image_transform(pil_image).unsqueeze(0).to(device)
-
-    # 推論だけなので勾配計算を止める。メモリと処理時間を節約できる。
-    with torch.no_grad():
-        outputs = model(image_tensor)
-        probabilities = torch.softmax(outputs, dim=1)[0]
-        confidence, predicted_index = probabilities.max(dim=0)
-
-    class_name = idx_to_class[predicted_index.item()]
+    prediction = predict_with_gradcam(pil_image)
 
     # JavaScriptへJSONとして返す。script.js側では data.class_name などで読める。
     return {
         "filename": image.filename,
         "content_type": image.content_type,
-        "class_name": class_name,
-        "confidence": confidence.item(),
-        "fake": probabilities[class_to_idx["fake"]].item(),
-        "real": probabilities[class_to_idx["real"]].item(),
+        **prediction,
     }
 
 
