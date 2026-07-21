@@ -1,12 +1,15 @@
 from pathlib import Path
 import base64
+from datetime import datetime
 import io
+import re
+import sqlite3
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
@@ -16,6 +19,13 @@ from torchvision import models, transforms
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 MODEL_PATH = BASE_DIR / "output" / "resnet50_real_fake.pth"
+DATA_DIR = BASE_DIR / "data"
+UPLOAD_DIR = DATA_DIR / "uploads"
+HEATMAP_DIR = DATA_DIR / "heatmaps"
+DB_PATH = DATA_DIR / "ai_judge.sqlite3"
+
+for directory in (DATA_DIR, UPLOAD_DIR, HEATMAP_DIR):
+    directory.mkdir(parents=True, exist_ok=True)
 
 # FastAPIアプリ本体。uvicorn app:app --reload の2つ目の app がこれ。
 app = FastAPI(title="AI Judge API")
@@ -27,6 +37,63 @@ app.mount(
     StaticFiles(directory=FRONTEND_DIR / "static"),
     name="static",
 )
+
+
+def get_db_connection():
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def init_db():
+    # 画像ファイルはDBに直接入れず、保存先のパスだけをDBに記録する。
+    # 同じファイル名の画像は再保存しないため、original_filenameをUNIQUEにする。
+    with get_db_connection() as connection:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                version TEXT NOT NULL,
+                path TEXT NOT NULL,
+                description TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_filename TEXT NOT NULL UNIQUE,
+                content_type TEXT,
+                original_image_path TEXT NOT NULL,
+                heatmap_image_path TEXT NOT NULL,
+                class_name TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                fake_probability REAL NOT NULL,
+                real_probability REAL NOT NULL,
+                model_id INTEGER,
+                explanation TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (model_id) REFERENCES models(id)
+            )
+        """)
+        connection.execute("""
+            INSERT INTO models (id, name, version, path, description, created_at)
+            VALUES (1, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                version = excluded.version,
+                path = excluded.path,
+                description = excluded.description
+        """, (
+            "ResNet50 baseline",
+            "dev",
+            str(MODEL_PATH.relative_to(BASE_DIR)),
+            "Real/Fake image classification model with Grad-CAM visualization.",
+            datetime.now().isoformat(timespec="seconds"),
+        ))
+
+
+init_db()
 
 
 def get_device():
@@ -93,6 +160,113 @@ def image_to_data_url(image):
     return f"data:image/png;base64,{encoded_image}"
 
 
+def saved_image_to_data_url(image_path):
+    # DBに保存したパスから画像を読み、画面表示用のdata URLへ変換する。
+    saved_path = BASE_DIR / image_path
+    with Image.open(saved_path) as saved_image:
+        return image_to_data_url(saved_image.convert("RGB"))
+
+
+def make_safe_filename(filename):
+    # ユーザー入力のファイル名を、保存に使いやすい安全な名前へ寄せる。
+    original_name = Path(filename or "uploaded_image").name
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", original_name)
+    return safe_name or "uploaded_image"
+
+
+def make_storage_paths(filename):
+    # 元画像とGrad-CAM画像を、それぞれ専用フォルダ直下に保存する。
+    safe_name = make_safe_filename(filename)
+    stem = Path(safe_name).stem or "uploaded_image"
+    suffix = Path(safe_name).suffix.lower() or ".png"
+
+    original_image_path = UPLOAD_DIR / f"{stem}{suffix}"
+    heatmap_image_path = HEATMAP_DIR / f"{stem}_gradcam.png"
+    return original_image_path, heatmap_image_path
+
+
+def get_existing_prediction(filename):
+    with get_db_connection() as connection:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                original_filename,
+                content_type,
+                original_image_path,
+                heatmap_image_path,
+                class_name,
+                confidence,
+                fake_probability,
+                real_probability,
+                explanation,
+                created_at
+            FROM predictions
+            WHERE original_filename = ?
+            """,
+            (filename,),
+        ).fetchone()
+
+
+def row_to_prediction_response(row, from_cache):
+    return {
+        "id": row["id"],
+        "filename": row["original_filename"],
+        "content_type": row["content_type"],
+        "class_name": row["class_name"],
+        "confidence": row["confidence"],
+        "fake": row["fake_probability"],
+        "real": row["real_probability"],
+        "explanation": row["explanation"],
+        "created_at": row["created_at"],
+        "original_image_path": row["original_image_path"],
+        "heatmap_image_path": row["heatmap_image_path"],
+        "heatmap_data_url": saved_image_to_data_url(row["heatmap_image_path"]),
+        "from_cache": from_cache,
+    }
+
+
+def save_prediction_record(filename, content_type, original_image_path, heatmap_image_path, prediction):
+    created_at = datetime.now().isoformat(timespec="seconds")
+    explanation = "Grad-CAMにより、判定時に注目した領域をヒートマップとして可視化しています。"
+
+    with get_db_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO predictions (
+                original_filename,
+                content_type,
+                original_image_path,
+                heatmap_image_path,
+                class_name,
+                confidence,
+                fake_probability,
+                real_probability,
+                model_id,
+                explanation,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                filename,
+                content_type,
+                str(original_image_path.relative_to(BASE_DIR)),
+                str(heatmap_image_path.relative_to(BASE_DIR)),
+                prediction["class_name"],
+                prediction["confidence"],
+                prediction["fake"],
+                prediction["real"],
+                1,
+                explanation,
+                created_at,
+            ),
+        )
+
+    row = get_existing_prediction(filename)
+    return row_to_prediction_response(row, from_cache=False)
+
+
 def predict_with_gradcam(pil_image):
     # hookが保存する場所。forwardで特徴マップ、backwardで勾配がここに入る。
     saved_values = {
@@ -136,14 +310,13 @@ def predict_with_gradcam(pil_image):
         cam = cam / (cam.max() + 1e-8)
 
         heatmap_image = make_heatmap_overlay(pil_image, cam)
-        heatmap_data_url = image_to_data_url(heatmap_image)
 
         return {
             "class_name": class_name,
             "confidence": confidence.item(),
             "fake": probabilities[class_to_idx["fake"]].item(),
             "real": probabilities[class_to_idx["real"]].item(),
-            "heatmap_data_url": heatmap_data_url,
+            "heatmap_image": heatmap_image,
         }
     finally:
         forward_handle.remove()
@@ -159,16 +332,68 @@ def index():
 @app.post("/api/predictions")
 async def create_prediction(image: UploadFile = File(...)):
     # JavaScriptの formData.append("image", file) の "image" がここに入る。
-    # UploadFileの中身をPillowで開き、RGB画像として扱う。
-    pil_image = Image.open(image.file).convert("RGB")
+    original_filename = Path(image.filename or "uploaded_image").name
+
+    # 同じファイル名がDBにある場合は、画像を再保存せず既存結果を返す。
+    existing_prediction = get_existing_prediction(original_filename)
+    if existing_prediction is not None:
+        return row_to_prediction_response(existing_prediction, from_cache=True)
+
+    # スマホ写真などの向き情報を反映してから、RGB画像として扱う。
+    pil_image = ImageOps.exif_transpose(Image.open(image.file)).convert("RGB")
     prediction = predict_with_gradcam(pil_image)
 
+    original_image_path, heatmap_image_path = make_storage_paths(original_filename)
+    pil_image.save(original_image_path)
+    prediction["heatmap_image"].save(heatmap_image_path)
+
     # JavaScriptへJSONとして返す。script.js側では data.class_name などで読める。
-    return {
-        "filename": image.filename,
-        "content_type": image.content_type,
-        **prediction,
-    }
+    return save_prediction_record(
+        filename=original_filename,
+        content_type=image.content_type,
+        original_image_path=original_image_path,
+        heatmap_image_path=heatmap_image_path,
+        prediction=prediction,
+    )
+
+
+@app.get("/api/predictions/history")
+def get_prediction_history():
+    with get_db_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                original_filename,
+                content_type,
+                original_image_path,
+                heatmap_image_path,
+                class_name,
+                confidence,
+                fake_probability,
+                real_probability,
+                explanation,
+                created_at
+            FROM predictions
+            ORDER BY id DESC
+            LIMIT 20
+            """
+        ).fetchall()
+
+    return [
+        {
+            "id": row["id"],
+            "filename": row["original_filename"],
+            "class_name": row["class_name"],
+            "confidence": row["confidence"],
+            "fake": row["fake_probability"],
+            "real": row["real_probability"],
+            "created_at": row["created_at"],
+            "original_image_path": row["original_image_path"],
+            "heatmap_image_path": row["heatmap_image_path"],
+        }
+        for row in rows
+    ]
 
 
 @app.get("/api/models/current")

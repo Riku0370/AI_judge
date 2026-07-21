@@ -4,22 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Judge</title>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <h1>AI Judge</h1>
-    <p>ようこそ！！AI画像判定アプリへ！！</p>
-    <input type="file" id="imageInput" accept="image/*">
-    <button type="button" id="judgeButton">判定する</button>
-    <br>
-        <br>
-            <img id="previewImage" width="300">
-        <br>
-    <br>
+    <main class="app">
+        <header class="app-header">
+            <p class="eyebrow">Image Classification</p>
+            <h1>AI Judge</h1>
+            <p class="lead">画像をアップロードして、AI生成画像か実写画像かを判定します。</p>
+        </header>
 
-    <p id="result">ここに結果が表示されます</p>
-    <p>ヒートマップ</p>
-    <img id="heatmapImage" width="300" style="display: none;">
+        <section class="control-panel" aria-label="画像判定フォーム">
+            <label class="file-picker" for="imageInput">
+                <span>画像を選択</span>
+                <input type="file" id="imageInput" accept="image/*">
+            </label>
+            <button type="button" id="judgeButton">判定する</button>
+        </section>
 
-    <script src="../static/javascript/script.js"></script>
+        <section class="result-panel" aria-live="polite">
+            <p class="result-label">判定結果</p>
+            <p id="result" class="result-text">ここに結果が表示されます</p>
+        </section>
+
+        <section class="image-grid" aria-label="画像比較">
+            <div class="image-block">
+                <div class="image-title">元画像</div>
+                <div class="image-frame">
+                    <img id="previewImage" alt="選択した画像のプレビュー">
+                </div>
+            </div>
+
+            <div class="image-block">
+                <div class="image-title">ヒートマップ</div>
+                <div class="image-frame">
+                    <img id="heatmapImage" alt="Grad-CAMのヒートマップ" hidden>
+                </div>
+            </div>
+        </section>
+
+        <section class="history-panel" aria-label="判定履歴">
+            <div class="section-heading">
+                <h2>判定履歴</h2>
+                <button type="button" id="reloadHistoryButton" class="secondary-button">更新</button>
+            </div>
+            <div id="historyList" class="history-list">
+                <p class="empty-text">まだ判定履歴はありません</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/javascript/script.js"></script>
 </body>
 </html>
