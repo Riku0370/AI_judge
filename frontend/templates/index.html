@@ -4,14 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Judge</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260721-pagination">
 </head>
 <body>
     <main class="app">
-        <header class="app-header">
-            <p class="eyebrow">Image Classification</p>
-            <h1>AI Judge</h1>
-            <p class="lead">画像をアップロードして、AI生成画像か実写画像かを判定します。</p>
+        <header class="app-header topbar">
+            <div>
+                <p class="eyebrow">Image Classification</p>
+                <h1>AI Judge</h1>
+                <p class="lead">画像をアップロードして、AI生成画像か実写画像かを判定します。</p>
+            </div>
+            <nav class="page-actions" aria-label="ページ移動">
+                <a class="nav-button" href="/history">履歴を見る</a>
+            </nav>
         </header>
 
         <section class="control-panel" aria-label="画像判定フォーム">
@@ -42,18 +47,8 @@
                 </div>
             </div>
         </section>
-
-        <section class="history-panel" aria-label="判定履歴">
-            <div class="section-heading">
-                <h2>判定履歴</h2>
-                <button type="button" id="reloadHistoryButton" class="secondary-button">更新</button>
-            </div>
-            <div id="historyList" class="history-list">
-                <p class="empty-text">まだ判定履歴はありません</p>
-            </div>
-        </section>
     </main>
 
-    <script src="/static/javascript/script.js"></script>
+    <script src="/static/javascript/script.js?v=20260721-paged-history"></script>
 </body>
 </html>

@@ -6,26 +6,24 @@ __pycache__/
 # macOS
 .DS_Store
 
-# 学習結果
+# 学習済みモデル
 *.pth
 *.pt
 *.onnx
 
-# データセット
+# データセット・保存データ
 archive/
 dataset/
 datasets/
 data/
 
-# 出力
+# 出力ファイル
+output/
 outputs/
 runs/
 wandb/
+tmp/
+experiments/
 
 # Jupyter
 .ipynb_checkpoints/
-
-output/
-experiments/
-output/
-tmp/

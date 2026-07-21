@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Judge History</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260721-pagination">
+</head>
+<body>
+    <main class="app">
+        <header class="app-header topbar">
+            <div>
+                <p class="eyebrow">Prediction Archive</p>
+                <h1>判定履歴</h1>
+                <p class="lead">保存済みの画像を検索し、判定結果とGrad-CAMを再表示できます。</p>
+            </div>
+            <nav class="page-actions" aria-label="ページ移動">
+                <a class="nav-button" href="/">判定画面へ</a>
+            </nav>
+        </header>
+
+        <section class="history-search-panel" aria-label="履歴検索">
+            <div class="search-box">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <input id="historySearchInput" type="search" placeholder="画像名で検索">
+            </div>
+            <div class="filter-tabs" aria-label="分類フィルター">
+                <button type="button" class="filter-tab active" data-class-name="">すべて</button>
+                <button type="button" class="filter-tab" data-class-name="real">実写</button>
+                <button type="button" class="filter-tab" data-class-name="fake">AI生成</button>
+            </div>
+        </section>
+
+        <section class="history-panel history-page-panel" aria-label="保存済み画像">
+            <div class="section-heading">
+                <h2>保存済み画像</h2>
+                <p id="historyStatus" class="history-status">履歴を読み込みます</p>
+            </div>
+            <div id="historyList" class="history-list history-gallery">
+                <p class="empty-text">履歴を読み込んでいます</p>
+            </div>
+            <div class="pagination" aria-label="履歴ページ切り替え">
+                <button type="button" id="prevPageButton" class="secondary-button">前へ</button>
+                <span id="pageIndicator" class="page-indicator">1 / 1</span>
+                <button type="button" id="nextPageButton" class="secondary-button">次へ</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/javascript/history.js?v=20260721-pagination"></script>
+</body>
+</html>
