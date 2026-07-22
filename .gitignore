@@ -18,7 +18,9 @@ datasets/
 data/
 
 # 出力ファイル
-output/
+output/*
+!output/
+!output/resnet50_real_fake.pth
 outputs/
 runs/
 wandb/
