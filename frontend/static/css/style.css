@@ -153,6 +153,13 @@ button:disabled {
   font-weight: 700;
 }
 
+.explanation-text {
+  max-width: 860px;
+  margin: 12px 0 0;
+  color: #4f5d70;
+  line-height: 1.7;
+}
+
 .image-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

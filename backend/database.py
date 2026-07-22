@@ -148,7 +148,10 @@ def get_prediction_detail(prediction_id):
 
 def save_prediction_record(filename, content_type, original_image_path, heatmap_image_path, prediction):
     created_at = datetime.now().isoformat(timespec="seconds")
-    explanation = "Grad-CAMにより、判定時に注目した領域をヒートマップとして可視化しています。"
+    explanation = prediction.get(
+        "explanation",
+        "Grad-CAMにより、判定時に注目した領域をヒートマップとして可視化しています。",
+    )
 
     with get_db_connection() as connection:
         connection.execute(

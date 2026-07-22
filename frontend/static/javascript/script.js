@@ -3,6 +3,7 @@ const imageInput = document.getElementById("imageInput");
 const previewImage = document.getElementById("previewImage");
 const judgeButton = document.getElementById("judgeButton");
 const result = document.getElementById("result");
+const explanation = document.getElementById("explanation");
 const heatmapImage = document.getElementById("heatmapImage");
 
 
@@ -21,6 +22,7 @@ imageInput.addEventListener("change", () => {
   heatmapImage.removeAttribute("src");
 
   result.textContent = `${file.name} を読み込みました`;
+  explanation.textContent = "判定後にGrad-CAMの説明が表示されます";
 });
 
 
@@ -49,6 +51,7 @@ function showPredictionResult(data) {
   const cacheMessage = data.from_cache ? " / 保存済み結果を使用" : "";
 
   result.textContent = `判定結果: ${label} / 信頼度: ${confidencePercent}%${cacheMessage}`;
+  explanation.textContent = data.explanation || "Grad-CAMの説明は保存されていません";
 
   if (data.original_image_data_url) {
     previewImage.src = data.original_image_data_url;

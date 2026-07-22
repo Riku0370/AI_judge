@@ -5,6 +5,7 @@ import torch.nn as nn
 from torchvision import models, transforms
 
 from .config import MODEL_PATH
+from .explanation_service import describe_gradcam
 
 
 def get_device():
@@ -103,6 +104,11 @@ def predict_with_gradcam(pil_image):
         cam = cam / (cam.max() + 1e-8)
 
         heatmap_image = make_heatmap_overlay(pil_image, cam)
+        explanation = describe_gradcam(
+            cam.detach().cpu().numpy(),
+            class_name,
+            confidence.item(),
+        )
 
         return {
             "class_name": class_name,
@@ -110,6 +116,7 @@ def predict_with_gradcam(pil_image):
             "fake": probabilities[class_to_idx["fake"]].item(),
             "real": probabilities[class_to_idx["real"]].item(),
             "heatmap_image": heatmap_image,
+            "explanation": explanation,
         }
     finally:
         forward_handle.remove()
